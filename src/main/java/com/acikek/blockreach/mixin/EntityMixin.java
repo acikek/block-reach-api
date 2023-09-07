@@ -49,6 +49,11 @@ public abstract class EntityMixin implements BlockReachPlayer {
         return blockreachapi$reaching;
     }
 
+    @Override
+    public Map<BlockPos, RegistryKey<World>> blockreachapi$reachingRaw() {
+        return blockreachapi$reaching;
+    }
+
     /**
      * Compares a reaching position value with a coordinate value passed in by {@link Entity#squaredDistanceTo(double, double, double)}.
      * <p>

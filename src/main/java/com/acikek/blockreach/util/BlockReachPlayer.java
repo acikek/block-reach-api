@@ -11,4 +11,6 @@ public interface BlockReachPlayer {
     boolean blockreachapi$isReaching();
 
     Map<BlockPos, RegistryKey<World>> blockreachapi$reaching();
+
+    Map<BlockPos, RegistryKey<World>> blockreachapi$reachingRaw();
 }
