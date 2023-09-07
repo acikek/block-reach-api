@@ -4,7 +4,8 @@
   "package": "com.acikek.blockreach.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "EntityMixin"
+    "EntityMixin",
+    "InventoryMixin"
   ],
   "client": [
   ],

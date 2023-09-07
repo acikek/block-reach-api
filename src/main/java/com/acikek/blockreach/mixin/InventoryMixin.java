@@ -1,6 +1,6 @@
 package com.acikek.blockreach.mixin;
 
-import com.acikek.calibrated.api.CalibratedAccessAPI;
+import com.acikek.blockreach.api.BlockReachAPI;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventory;
@@ -14,11 +14,8 @@ public interface InventoryMixin {
 
     @Inject(method = "canPlayerUse(Lnet/minecraft/block/entity/BlockEntity;Lnet/minecraft/entity/player/PlayerEntity;I)Z", cancellable = true, at = @At("HEAD"))
     private static void calibrated$fakeUsable(BlockEntity blockEntity, PlayerEntity player, int range, CallbackInfoReturnable<Boolean> cir) {
-        var sessions = CalibratedAccessAPI.getSessions(player);
-        for (var session : sessions.values()) {
-            if (session.syncedPos().equals(blockEntity.getPos())) {
-                cir.setReturnValue(true);
-            }
+        if (BlockReachAPI.hasBlockEntity(player, blockEntity)) {
+            cir.setReturnValue(true);
         }
     }
 }

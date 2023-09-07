@@ -1,13 +1,15 @@
 package com.acikek.blockreach.mixin;
 
 import com.acikek.blockreach.BlockReachMod;
-import com.acikek.blockreach.api.position.BlockReachPos;
+import com.acikek.blockreach.api.BlockReachAPI;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -16,10 +18,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements BlockReachPlayer {
@@ -31,8 +31,10 @@ public abstract class EntityMixin implements BlockReachPlayer {
 
     @Shadow public abstract EntityPose getPose();
 
+    // Lazily-loaded to prevent instantiating collection for every entity
+    // Never purposefully destroyed here, but doesn't get serialized when empty
     @Unique
-    private Set<BlockReachPos> blockreachapi$reaching = null;
+    private Map<BlockPos, RegistryKey<World>> blockreachapi$reaching = null;
 
     @Override
     public boolean blockreachapi$isReaching() {
@@ -40,9 +42,9 @@ public abstract class EntityMixin implements BlockReachPlayer {
     }
 
     @Override
-    public Set<BlockReachPos> blockreachapi$reaching() {
+    public Map<BlockPos, RegistryKey<World>> blockreachapi$reaching() {
         if (blockreachapi$reaching == null) {
-            blockreachapi$reaching = new HashSet<>();
+            blockreachapi$reaching = new HashMap<>();
         }
         return blockreachapi$reaching;
     }
@@ -77,9 +79,8 @@ public abstract class EntityMixin implements BlockReachPlayer {
         }
         // Only calculate eye offset if Pehkui is enabled for the relevant check with it
         double eyeOffset = BlockReachMod.isPehkuiEnabled ? getEyeHeight(getPose()) : 0.0;
-        for (BlockReachPos data : blockreachapi$reaching) {
+        for (BlockPos pos : blockreachapi$reaching.keySet()) {
             // This is an important math method that can be used elsewhere, so make sure we're targeting the synced position
-            BlockPos pos = data.pos();
             if (blockreachapi$compare(pos.getX(), x, 0.0)
                     && blockreachapi$compare(pos.getY(), y, eyeOffset)
                     && blockreachapi$compare(pos.getZ(), z, 0.0)) {
@@ -93,8 +94,7 @@ public abstract class EntityMixin implements BlockReachPlayer {
         if (!blockreachapi$isReaching()) {
             return;
         }
-        List<BlockReachPos> positions = new ArrayList<>(blockreachapi$reaching);
-        var element = BlockReachPos.LIST_CODEC.encodeStart(NbtOps.INSTANCE, positions)
+        var element = BlockReachAPI.POSITIONS_CODEC.encodeStart(NbtOps.INSTANCE, blockreachapi$reaching)
                 .getOrThrow(true, BlockReachMod.LOGGER::error);
         nbt.put(NBT_KEY, element);
     }
@@ -104,9 +104,8 @@ public abstract class EntityMixin implements BlockReachPlayer {
         if (!nbt.contains(NBT_KEY)) {
             return;
         }
-        List<BlockReachPos> positions = BlockReachPos.LIST_CODEC.decode(NbtOps.INSTANCE, nbt.get(NBT_KEY))
+        blockreachapi$reaching = BlockReachAPI.POSITIONS_CODEC.decode(NbtOps.INSTANCE, nbt.get(NBT_KEY))
                 .getOrThrow(true, BlockReachMod.LOGGER::error)
                 .getFirst();
-        blockreachapi$reaching = new HashSet<>(positions);
     }
 }
