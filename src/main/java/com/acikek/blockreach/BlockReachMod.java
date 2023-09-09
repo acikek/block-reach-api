@@ -1,6 +1,6 @@
 package com.acikek.blockreach;
 
-import com.acikek.blockreach.api.BlockReachAPI;
+import com.acikek.blockreach.command.BlockReachCommand;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.Identifier;
@@ -21,6 +21,8 @@ public class BlockReachMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        LOGGER.info("Initializing Block Reach API...");
+        BlockReachCommand.register();
         isPehkuiEnabled = FabricLoader.getInstance().isModLoaded("pehkui");
     }
 }
