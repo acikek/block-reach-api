@@ -3,6 +3,9 @@ package com.acikek.blockreach.mixin;
 import com.acikek.blockreach.BlockReachMod;
 import com.acikek.blockreach.api.BlockReachAPI;
 import com.acikek.blockreach.util.BlockReachPlayer;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.Multimaps;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.nbt.NbtCompound;
@@ -18,8 +21,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.HashMap;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements BlockReachPlayer {
@@ -34,7 +40,7 @@ public abstract class EntityMixin implements BlockReachPlayer {
     // Lazily-loaded to prevent instantiating collection for every entity
     // Never purposefully destroyed here, but doesn't get serialized when empty
     @Unique
-    private Map<BlockPos, RegistryKey<World>> blockreachapi$reaching = null;
+    private Multimap<BlockPos, RegistryKey<World>> blockreachapi$reaching = null;
 
     @Override
     public boolean blockreachapi$isReaching() {
@@ -42,15 +48,15 @@ public abstract class EntityMixin implements BlockReachPlayer {
     }
 
     @Override
-    public Map<BlockPos, RegistryKey<World>> blockreachapi$reaching() {
+    public Multimap<BlockPos, RegistryKey<World>> blockreachapi$reaching() {
         if (blockreachapi$reaching == null) {
-            blockreachapi$reaching = new HashMap<>();
+            blockreachapi$reaching = MultimapBuilder.treeKeys().hashSetValues(1).build();
         }
         return blockreachapi$reaching;
     }
 
     @Override
-    public Map<BlockPos, RegistryKey<World>> blockreachapi$reachingRaw() {
+    public Multimap<BlockPos, RegistryKey<World>> blockreachapi$reachingRaw() {
         return blockreachapi$reaching;
     }
 
@@ -99,7 +105,9 @@ public abstract class EntityMixin implements BlockReachPlayer {
         if (!blockreachapi$isReaching()) {
             return;
         }
-        var element = BlockReachAPI.POSITIONS_CODEC.encodeStart(NbtOps.INSTANCE, blockreachapi$reaching)
+        var map = blockreachapi$reaching.asMap().entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, pair -> List.copyOf(pair.getValue())));
+        var element = BlockReachAPI.POSITIONS_CODEC.encodeStart(NbtOps.INSTANCE, map)
                 .getOrThrow(true, BlockReachMod.LOGGER::error);
         nbt.put(NBT_KEY, element);
     }
@@ -109,8 +117,11 @@ public abstract class EntityMixin implements BlockReachPlayer {
         if (!nbt.contains(NBT_KEY)) {
             return;
         }
-        blockreachapi$reaching = BlockReachAPI.POSITIONS_CODEC.decode(NbtOps.INSTANCE, nbt.get(NBT_KEY))
+        var map = BlockReachAPI.POSITIONS_CODEC.decode(NbtOps.INSTANCE, nbt.get(NBT_KEY))
                 .getOrThrow(true, BlockReachMod.LOGGER::error)
-                .getFirst();
+                .getFirst()
+                .entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, pair -> (Collection<RegistryKey<World>>) pair.getValue()));
+        blockreachapi$reaching = Multimaps.newSetMultimap(map, HashSet::new);
     }
 }
