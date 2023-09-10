@@ -5,6 +5,7 @@ import com.acikek.blockreach.network.BlockReachNetworking;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Multimaps;
 import com.mojang.serialization.Codec;
 import net.minecraft.block.entity.BlockEntity;
@@ -20,7 +21,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,7 +41,7 @@ public class BlockReachAPI {
      * @see BlockReachAPI#createPositions(Map)
      */
     public static final Codec<Map<BlockPos, List<RegistryKey<World>>>> POSITIONS_CODEC = Codec.unboundedMap(
-            BlockPos.CODEC,
+            Codec.STRING.xmap(str -> BlockPos.fromLong(Long.parseLong(str)), pos -> Long.toString(pos.asLong())),
             Codec.list(RegistryKey.createCodec(RegistryKeys.WORLD))
     );
 
@@ -82,13 +82,11 @@ public class BlockReachAPI {
      * @return the resulting multimap
      */
     public static @NotNull Multimap<BlockPos, RegistryKey<World>> createPositions(@NotNull Map<BlockPos, List<RegistryKey<World>>> map) {
-        var collMap = map.entrySet()
-                .stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        pair -> (Collection<RegistryKey<World>>) pair.getValue()
-                ));
-        return Multimaps.newSetMultimap(collMap, HashSet::new);
+        Multimap<BlockPos, RegistryKey<World>> multimap = MultimapBuilder.treeKeys().hashSetValues(1).build();
+        for (var entry : map.entrySet()) {
+            multimap.putAll(entry.getKey(), entry.getValue());
+        }
+        return multimap;
     }
 
     /**

@@ -1,13 +1,16 @@
 package com.acikek.blockreach.command;
 
+import com.acikek.blockreach.BlockReachMod;
 import com.acikek.blockreach.api.BlockReachAPI;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.DimensionArgumentType;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -49,9 +52,13 @@ public class BlockReachCommand {
     public static int remove(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
         BlockPos pos = BlockPosArgumentType.getBlockPos(context, "pos");
-        for (var player : targets) {
-            BlockReachAPI.removePosition(player, pos);
-            BlockReachAPI.syncPosition(player, pos);
+        try {
+            for (var player : targets) {
+                BlockReachAPI.removePosition(player, pos);
+                BlockReachAPI.syncPosition(player, pos);
+            }
+        } catch (Exception e) {
+            BlockReachMod.LOGGER.error("bruh", e);
         }
         return targets.size();
     }
@@ -64,6 +71,19 @@ public class BlockReachCommand {
                 positions.clear();
             }
             BlockReachAPI.sync(player);
+        }
+        return targets.size();
+    }
+
+    public static int open(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+        Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
+        BlockPos pos = BlockPosArgumentType.getBlockPos(context, "pos");
+        World world = context.getSource().getWorld();
+        BlockEntity blockEntity = world.getBlockEntity(pos);
+        if (blockEntity instanceof NamedScreenHandlerFactory factory) {
+            for (var target : targets) {
+                target.openHandledScreen(factory);
+            }
         }
         return targets.size();
     }
@@ -81,7 +101,10 @@ public class BlockReachCommand {
                                         .then(argument("pos", BlockPosArgumentType.blockPos())
                                                 .executes(BlockReachCommand::remove)))
                                 .then(literal("clear")
-                                        .executes(BlockReachCommand::clear)))
+                                        .executes(BlockReachCommand::clear))
+                                .then(literal("open")
+                                        .then(argument("pos", BlockPosArgumentType.blockPos())
+                                                .executes(BlockReachCommand::open))))
                         .requires(source -> source.hasPermissionLevel(2)))
         );
     }
