@@ -5,7 +5,6 @@ import com.acikek.blockreach.api.BlockReachAPI;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.Multimaps;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.nbt.NbtCompound;
@@ -20,12 +19,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements BlockReachPlayer {
@@ -58,6 +51,11 @@ public abstract class EntityMixin implements BlockReachPlayer {
     @Override
     public Multimap<BlockPos, RegistryKey<World>> blockreachapi$reachingRaw() {
         return blockreachapi$reaching;
+    }
+
+    @Override
+    public void blockreachapi$setReaching(Multimap<BlockPos, RegistryKey<World>> multimap) {
+        blockreachapi$reaching = multimap;
     }
 
     /**
@@ -105,8 +103,7 @@ public abstract class EntityMixin implements BlockReachPlayer {
         if (!blockreachapi$isReaching()) {
             return;
         }
-        var map = blockreachapi$reaching.asMap().entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, pair -> List.copyOf(pair.getValue())));
+        var map = BlockReachAPI.getPositionMap(blockreachapi$reaching);
         var element = BlockReachAPI.POSITIONS_CODEC.encodeStart(NbtOps.INSTANCE, map)
                 .getOrThrow(true, BlockReachMod.LOGGER::error);
         nbt.put(NBT_KEY, element);
@@ -119,9 +116,7 @@ public abstract class EntityMixin implements BlockReachPlayer {
         }
         var map = BlockReachAPI.POSITIONS_CODEC.decode(NbtOps.INSTANCE, nbt.get(NBT_KEY))
                 .getOrThrow(true, BlockReachMod.LOGGER::error)
-                .getFirst()
-                .entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, pair -> (Collection<RegistryKey<World>>) pair.getValue()));
-        blockreachapi$reaching = Multimaps.newSetMultimap(map, HashSet::new);
+                .getFirst();
+        blockreachapi$reaching = BlockReachAPI.createPositions(map);
     }
 }

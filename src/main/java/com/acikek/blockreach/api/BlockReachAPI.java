@@ -10,14 +10,19 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class BlockReachAPI {
 
@@ -39,11 +44,35 @@ public class BlockReachAPI {
     /**
      * @return a <em>modifiable</em> map of the player's reaching positions.
      * May be {@code null} if the player has no reaching positions.
-     * The {@link RegistryKey<World>} collections should never be empty. Instead, empty world values
+     * The present {@link RegistryKey<World>} collections should never be empty. Instead, empty world values
      * are represented with {@link BlockReachAPI#EMPTY_WORLD}.
+     * @see Multimap#get(Object)
      */
     public static @Nullable Multimap<BlockPos, RegistryKey<World>> getPositions(PlayerEntity player) {
         return ((BlockReachPlayer) player).blockreachapi$reachingRaw();
+    }
+
+    public static @NotNull Map<BlockPos, List<RegistryKey<World>>> getPositionMap(@NotNull Multimap<BlockPos, RegistryKey<World>> multimap) {
+        return multimap.asMap().entrySet()
+                .stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, pair -> List.copyOf(pair.getValue())));
+    }
+
+    public static @NotNull Map<BlockPos, List<RegistryKey<World>>> getPositionMap(PlayerEntity player) {
+        var positions = BlockReachAPI.getPositions(player);
+        return positions != null
+                ? BlockReachAPI.getPositionMap(positions)
+                : Collections.emptyMap();
+    }
+
+    public static @NotNull Multimap<BlockPos, RegistryKey<World>> createPositions(@NotNull Map<BlockPos, List<RegistryKey<World>>> map) {
+        var collMap = map.entrySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        pair -> (Collection<RegistryKey<World>>) pair.getValue()
+                ));
+        return Multimaps.newSetMultimap(collMap, HashSet::new);
     }
 
     /**
@@ -52,10 +81,9 @@ public class BlockReachAPI {
      */
     public static @NotNull Multimap<BlockPos, RegistryKey<World>> getPositionView(PlayerEntity player) {
         var positions = BlockReachAPI.getPositions(player);
-        if (positions == null) {
-            return HashMultimap.create();
-        }
-        return Multimaps.unmodifiableMultimap(positions);
+        return positions != null
+                ? Multimaps.unmodifiableMultimap(positions)
+                : HashMultimap.create();
     }
 
     /**
@@ -74,14 +102,26 @@ public class BlockReachAPI {
     }
 
     /**
+     * @param strict
      * @return whether the player has the specified reaching position in the specified world
      */
-    public static boolean hasPositionInWorld(PlayerEntity player, BlockPos pos, RegistryKey<World> worldKey) {
+    public static boolean hasPositionInWorld(PlayerEntity player, BlockPos pos, RegistryKey<World> worldKey, boolean strict) {
         var positions = BlockReachAPI.getPositions(player);
         if (positions == null) {
             return false;
         }
-        return positions.get(pos).contains(worldKey);
+        var worldKeys = positions.get(pos);
+        if (worldKeys.isEmpty()) {
+            return false; // Position not present in multimap
+        }
+        if (strict && worldKeys.contains(EMPTY_WORLD)) {
+            return false; // Position not attached to world
+        }
+        return worldKeys.contains(worldKey);
+    }
+
+    public static boolean hasPositionInWorld(PlayerEntity player, BlockPos pos, RegistryKey<World> worldKey) {
+        return hasPositionInWorld(player, pos, worldKey, false);
     }
 
     /**
@@ -114,7 +154,11 @@ public class BlockReachAPI {
      * @see BlockReachAPI#addPosition(PlayerEntity, BlockPos)
      */
     public static boolean addPositionInWorld(PlayerEntity player, BlockPos pos, RegistryKey<World> worldKey) {
-        return ((BlockReachPlayer) player).blockreachapi$reaching().put(pos, worldKey);
+        var positions = ((BlockReachPlayer) player).blockreachapi$reaching(); // Initializes multimap if not present
+        if (!worldKey.equals(EMPTY_WORLD) && positions.containsEntry(pos, EMPTY_WORLD)) {
+            positions.remove(pos, EMPTY_WORLD);
+        }
+        return positions.put(pos, worldKey);
     }
 
     /**
@@ -169,5 +213,13 @@ public class BlockReachAPI {
      */
     public static Collection<RegistryKey<World>> removeBlockEntity(PlayerEntity player, BlockEntity blockEntity) {
         return BlockReachAPI.removePosition(player, blockEntity.getPos());
+    }
+
+    public static void sync(ServerPlayerEntity player) {
+
+    }
+
+    public static void sync(ServerPlayerEntity player, Set<BlockPos> positions) {
+
     }
 }

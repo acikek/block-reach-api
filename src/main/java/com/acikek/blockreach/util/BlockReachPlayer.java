@@ -12,4 +12,6 @@ public interface BlockReachPlayer {
     Multimap<BlockPos, RegistryKey<World>> blockreachapi$reaching();
 
     Multimap<BlockPos, RegistryKey<World>> blockreachapi$reachingRaw();
+
+    void blockreachapi$setReaching(Multimap<BlockPos, RegistryKey<World>> multimap);
 }
