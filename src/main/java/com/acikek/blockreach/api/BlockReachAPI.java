@@ -55,12 +55,19 @@ public class BlockReachAPI {
         return ((BlockReachPlayer) player).blockreachapi$reachingRaw();
     }
 
+    /**
+     * Converts a position multimap to a {@link Map} better suited for serialization.
+     * @return the resulting map
+     */
     public static @NotNull Map<BlockPos, List<RegistryKey<World>>> getPositionMap(@NotNull Multimap<BlockPos, RegistryKey<World>> multimap) {
         return multimap.asMap().entrySet()
                 .stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, pair -> List.copyOf(pair.getValue())));
     }
 
+    /**
+     * @see BlockReachAPI#getPositionMap(Multimap)
+     */
     public static @NotNull Map<BlockPos, List<RegistryKey<World>>> getPositionMap(PlayerEntity player) {
         var positions = BlockReachAPI.getPositions(player);
         return positions != null
@@ -68,6 +75,10 @@ public class BlockReachAPI {
                 : Collections.emptyMap();
     }
 
+    /**
+     * Converts a position map to a {@link Multimap} for use in {@link BlockReachAPI}.
+     * @return the resulting multimap
+     */
     public static @NotNull Multimap<BlockPos, RegistryKey<World>> createPositions(@NotNull Map<BlockPos, List<RegistryKey<World>>> map) {
         var collMap = map.entrySet()
                 .stream()
@@ -104,6 +115,9 @@ public class BlockReachAPI {
         return positions != null && positions.containsKey(pos);
     }
 
+    /**
+     * @return whether the player has the specified reaching position attached to the {@link BlockReachAPI#GLOBAL_WORLD}
+     */
     public static boolean hasPositionGlobally(PlayerEntity player, BlockPos pos) {
         var positions = BlockReachAPI.getPositions(player);
         return positions != null && positions.get(pos).contains(BlockReachAPI.GLOBAL_WORLD);
@@ -125,17 +139,23 @@ public class BlockReachAPI {
         return worldKeys.contains(worldKey) || (!strict && worldKeys.contains(GLOBAL_WORLD));
     }
 
+    /**
+     * @see BlockReachAPI#hasPositionInWorld(PlayerEntity, BlockPos, RegistryKey, boolean)
+     */
     public static boolean hasPositionInWorld(PlayerEntity player, BlockPos pos, RegistryKey<World> worldKey) {
         return hasPositionInWorld(player, pos, worldKey, false);
     }
 
     /**
-     * @see BlockReachAPI#hasPositionInWorld(PlayerEntity, BlockPos, RegistryKey)
+     * @see BlockReachAPI#hasPositionInWorld(PlayerEntity, BlockPos, RegistryKey, boolean)
      */
     public static boolean hasPositionInWorld(PlayerEntity player, BlockPos pos, World world, boolean strict) {
         return BlockReachAPI.hasPositionInWorld(player, pos, world.getRegistryKey(), strict);
     }
 
+    /**
+     * @see BlockReachAPI#hasPositionInWorld(PlayerEntity, BlockPos, World, boolean)
+     */
     public static boolean hasPositionInWorld(PlayerEntity player, BlockPos pos, World world) {
         return BlockReachAPI.hasPositionInWorld(player, pos, world, false);
     }
@@ -212,6 +232,11 @@ public class BlockReachAPI {
         return positions.removeAll(pos);
     }
 
+    /**
+     * Removes a reaching position from the specified world in the player's map.
+     * Other worlds may still be attached to the position.
+     * @return whether the entry was removed successfully
+     */
     public static boolean removePositionFromWorld(PlayerEntity player, BlockPos pos, RegistryKey<World> worldKey) {
         var positions = BlockReachAPI.getPositions(player);
         if (positions == null) {
@@ -220,10 +245,17 @@ public class BlockReachAPI {
         return positions.remove(pos, worldKey);
     }
 
+    /**
+     * @see BlockReachAPI#removePositionFromWorld(PlayerEntity, BlockPos, RegistryKey)
+     */
     public static boolean removePositionFromWorld(PlayerEntity player, BlockPos pos, World world) {
         return BlockReachAPI.removePositionFromWorld(player, pos, world.getRegistryKey());
     }
 
+    /**
+     * Removes a reaching position from the {@link BlockReachAPI#GLOBAL_WORLD} in the player's map.
+     * @see BlockReachAPI#removePositionFromWorld(PlayerEntity, BlockPos, RegistryKey)
+     */
     public static boolean removePositionGlobally(PlayerEntity player, BlockPos pos) {
         return BlockReachAPI.removePositionFromWorld(player, pos, BlockReachAPI.GLOBAL_WORLD);
     }
