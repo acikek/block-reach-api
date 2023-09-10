@@ -33,6 +33,7 @@ public class BlockReachCommand {
             else {
                 BlockReachAPI.addPosition(player, pos);
             }
+            BlockReachAPI.syncPosition(player, pos);
         }
         return targets.size();
     }
@@ -50,6 +51,7 @@ public class BlockReachCommand {
         BlockPos pos = BlockPosArgumentType.getBlockPos(context, "pos");
         for (var player : targets) {
             BlockReachAPI.removePosition(player, pos);
+            BlockReachAPI.syncPosition(player, pos);
         }
         return targets.size();
     }
@@ -61,6 +63,7 @@ public class BlockReachCommand {
             if (positions != null) {
                 positions.clear();
             }
+            BlockReachAPI.sync(player);
         }
         return targets.size();
     }

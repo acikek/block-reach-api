@@ -1,6 +1,7 @@
 package com.acikek.blockreach.api;
 
 import com.acikek.blockreach.BlockReachMod;
+import com.acikek.blockreach.network.BlockReachNetworking;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -16,6 +17,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -268,11 +270,56 @@ public class BlockReachAPI {
         return BlockReachAPI.removePosition(player, blockEntity.getPos());
     }
 
+    /**
+     * Syncs the player's entire position map to their client.
+     */
     public static void sync(ServerPlayerEntity player) {
-
+        BlockReachNetworking.s2cSyncAll(player);
     }
 
-    public static void sync(ServerPlayerEntity player, Set<BlockPos> positions) {
+    /**
+     * Syncs the specified positions in the player's position map to their client.
+     */
+    public static void syncPositions(ServerPlayerEntity player, Set<BlockPos> positions) {
+        BlockReachNetworking.s2cSyncDiff(player, positions);
+    }
 
+    /**
+     * @see BlockReachAPI#syncPositions(ServerPlayerEntity, Set)
+     */
+    public static void syncPositions(ServerPlayerEntity player, BlockPos... positions) {
+        BlockReachAPI.syncPositions(player, Arrays.stream(positions).collect(Collectors.toSet()));
+    }
+
+    /**
+     * @see BlockReachAPI#syncPositions(ServerPlayerEntity, Set)
+     */
+    public static void syncPosition(ServerPlayerEntity player, BlockPos pos) {
+        BlockReachAPI.syncPositions(player, Collections.singleton(pos));
+    }
+
+    /**
+     * Syncs the specified block entities' positions in the player's position map to their client.
+     * @see BlockReachAPI#syncPositions(ServerPlayerEntity, Set)
+     */
+    public static void syncBlockEntities(ServerPlayerEntity player, Set<BlockEntity> blockEntities) {
+        var positions = blockEntities.stream()
+                .map(BlockEntity::getPos)
+                .collect(Collectors.toSet());
+        BlockReachAPI.syncPositions(player, positions);
+    }
+
+    /**
+     * @see BlockReachAPI#syncBlockEntities(ServerPlayerEntity, Set)
+     */
+    public static void syncBlockEntities(ServerPlayerEntity player, BlockEntity... blockEntities) {
+        BlockReachAPI.syncBlockEntities(player, Arrays.stream(blockEntities).collect(Collectors.toSet()));
+    }
+
+    /**
+     * @see BlockReachAPI#syncBlockEntities(ServerPlayerEntity, Set)
+     */
+    public static void syncBlockEntities(ServerPlayerEntity player, BlockEntity blockEntity) {
+        BlockReachAPI.syncBlockEntities(player, Collections.singleton(blockEntity));
     }
 }
