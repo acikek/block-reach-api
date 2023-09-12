@@ -92,7 +92,6 @@ public class BlockReachCommand {
             World targetWorld = useWorld ? world : context.getSource().getWorld();
             if (targetWorld.getBlockEntity(pos) instanceof NamedScreenHandlerFactory factory) {
                 for (var target : targets) {
-                    System.out.println(BlockReachAPI.getPositionView(target).get(pos));
                     target.openHandledScreen(factory);
                 }
             }
