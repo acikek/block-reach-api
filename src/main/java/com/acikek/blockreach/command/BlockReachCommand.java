@@ -1,14 +1,14 @@
 package com.acikek.blockreach.command;
 
-import com.acikek.blockreach.BlockReachMod;
 import com.acikek.blockreach.api.BlockReachAPI;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.DimensionArgumentType;
 import net.minecraft.command.argument.EntityArgumentType;
+import net.minecraft.command.argument.PosArgument;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.server.command.ServerCommandSource;
@@ -24,46 +24,58 @@ import static net.minecraft.server.command.CommandManager.literal;
 
 public class BlockReachCommand {
 
-    public static int add(CommandContext<ServerCommandSource> context, boolean useWorld) throws CommandSyntaxException {
+    @FunctionalInterface
+    private interface Callback {
+        int call(Collection<ServerPlayerEntity> targets, BlockPos pos, ServerWorld world, RegistryKey<World> worldKey);
+    }
+
+    @FunctionalInterface
+    private interface SubCommand {
+        int run(CommandContext<ServerCommandSource> context, boolean useWorld) throws CommandSyntaxException;
+    }
+
+    private static int run(CommandContext<ServerCommandSource> context, boolean useWorld, Callback callback) throws CommandSyntaxException {
         Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
         BlockPos pos = BlockPosArgumentType.getBlockPos(context, "pos");
         ServerWorld world = useWorld ? DimensionArgumentType.getDimensionArgument(context, "world") : null;
         RegistryKey<World> worldKey = useWorld ? world.getRegistryKey() : null;
-        for (var player : targets) {
-            if (useWorld) {
-                BlockReachAPI.addPositionInWorld(player, pos, worldKey);
-            }
-            else {
-                BlockReachAPI.addPosition(player, pos);
-            }
-            BlockReachAPI.syncPosition(player, pos);
-        }
-        return targets.size();
+        return callback.call(targets, pos, world, worldKey);
     }
 
-    public static int add(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        return add(context, false);
-    }
-
-    public static int addToWorld(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        return add(context, true);
-    }
-
-    public static int remove(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
-        BlockPos pos = BlockPosArgumentType.getBlockPos(context, "pos");
-        try {
+    private static int modify(CommandContext<ServerCommandSource> context, boolean useWorld, boolean add) throws CommandSyntaxException {
+        return run(context, useWorld, (targets, pos, world, worldKey) -> {
             for (var player : targets) {
-                BlockReachAPI.removePosition(player, pos);
+                if (useWorld) {
+                    if (add) {
+                        BlockReachAPI.addPositionInWorld(player, pos, worldKey);
+                    }
+                    else {
+                        BlockReachAPI.removePositionFromWorld(player, pos, worldKey);
+                    }
+                }
+                else {
+                    if (add) {
+                        BlockReachAPI.addPosition(player, pos);
+                    }
+                    else {
+                        BlockReachAPI.removePosition(player, pos);
+                    }
+                }
                 BlockReachAPI.syncPosition(player, pos);
             }
-        } catch (Exception e) {
-            BlockReachMod.LOGGER.error("bruh", e);
-        }
-        return targets.size();
+            return targets.size();
+        });
     }
 
-    public static int clear(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+    private static int add(CommandContext<ServerCommandSource> context, boolean useWorld) throws CommandSyntaxException {
+        return modify(context, useWorld, true);
+    }
+
+    private static int remove(CommandContext<ServerCommandSource> context, boolean useWorld) throws CommandSyntaxException {
+        return modify(context, useWorld, false);
+    }
+
+    private static int clear(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
         Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
         for (var player : targets) {
             var positions = BlockReachAPI.getPositions(player);
@@ -75,17 +87,24 @@ public class BlockReachCommand {
         return targets.size();
     }
 
-    public static int open(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        Collection<ServerPlayerEntity> targets = EntityArgumentType.getPlayers(context, "targets");
-        BlockPos pos = BlockPosArgumentType.getBlockPos(context, "pos");
-        World world = context.getSource().getWorld();
-        BlockEntity blockEntity = world.getBlockEntity(pos);
-        if (blockEntity instanceof NamedScreenHandlerFactory factory) {
-            for (var target : targets) {
-                target.openHandledScreen(factory);
+    private static int open(CommandContext<ServerCommandSource> context, boolean useWorld) throws CommandSyntaxException {
+        return run(context, useWorld, (targets, pos, world, worldKey) -> {
+            World targetWorld = useWorld ? world : context.getSource().getWorld();
+            if (targetWorld.getBlockEntity(pos) instanceof NamedScreenHandlerFactory factory) {
+                for (var target : targets) {
+                    System.out.println(BlockReachAPI.getPositionView(target).get(pos));
+                    target.openHandledScreen(factory);
+                }
             }
-        }
-        return targets.size();
+            return targets.size();
+        });
+    }
+
+    private static RequiredArgumentBuilder<ServerCommandSource, PosArgument> subcommand(SubCommand command) {
+        return argument("pos", BlockPosArgumentType.blockPos())
+                .executes(context -> command.run(context, false))
+                .then(argument("world", DimensionArgumentType.dimension())
+                        .executes(context -> command.run(context, true)));
     }
 
     public static void register() {
@@ -93,18 +112,13 @@ public class BlockReachCommand {
                 dispatcher.register(literal("blockreachapi")
                         .then(argument("targets", EntityArgumentType.players())
                                 .then(literal("add")
-                                        .then(argument("pos", BlockPosArgumentType.blockPos())
-                                                .executes(BlockReachCommand::add)
-                                                .then(argument("world", DimensionArgumentType.dimension())
-                                                        .executes(BlockReachCommand::addToWorld))))
+                                        .then(subcommand(BlockReachCommand::add)))
                                 .then(literal("remove")
-                                        .then(argument("pos", BlockPosArgumentType.blockPos())
-                                                .executes(BlockReachCommand::remove)))
+                                        .then(subcommand(BlockReachCommand::remove)))
                                 .then(literal("clear")
                                         .executes(BlockReachCommand::clear))
                                 .then(literal("open")
-                                        .then(argument("pos", BlockPosArgumentType.blockPos())
-                                                .executes(BlockReachCommand::open))))
+                                        .then(subcommand(BlockReachCommand::open))))
                         .requires(source -> source.hasPermissionLevel(2)))
         );
     }
