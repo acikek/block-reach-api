@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Contains methods and constants for working with the {@link BlockReachAPI} position map structure.
+ */
 public class BlockReachPositions {
 
     /**

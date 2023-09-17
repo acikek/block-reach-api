@@ -1,6 +1,7 @@
 package com.acikek.blockreach.api;
 
 import com.acikek.blockreach.api.position.BlockReachPositions;
+import com.acikek.blockreach.api.tag.BlockReachTags;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -223,17 +224,23 @@ public class BlockReachAPI {
         return BlockReachAPI.removePosition(player, blockEntity.getPos());
     }
 
+    /**
+     * Utility method for finding and validating a position's screen, if any.
+     * Respects {@link BlockReachTags#DENY_BLOCKS}.
+     * @return the screen handler factory, or {@code null} if none is found or validated.
+     */
     public static @Nullable NamedScreenHandlerFactory getScreen(World world, BlockPos pos, PlayerEntity player) {
         BlockEntity blockEntity = world.getBlockEntity(pos);
-        if (blockEntity == null) {
-            return world.getBlockState(pos).createScreenHandlerFactory(world, pos);
-        }
         if (blockEntity instanceof LockableContainerBlockEntity lockable && !lockable.checkUnlocked(player)) {
             return null;
         }
         if (blockEntity instanceof NamedScreenHandlerFactory factory) {
             return factory;
         }
-        return null;
+        var state = world.getBlockState(pos);
+        if (state.isIn(BlockReachTags.DENY_BLOCKS)) {
+            return null;
+        }
+        return world.getBlockState(pos).createScreenHandlerFactory(world, pos);
     }
 }

@@ -1,5 +1,6 @@
 package com.acikek.blockreach.api.network;
 
+import com.acikek.blockreach.api.BlockReachAPI;
 import com.acikek.blockreach.api.impl.network.BlockReachNetworkingImpl;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -10,6 +11,9 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Contains methods for syncing a player's {@link BlockReachAPI} position data to the client.
+ */
 public class BlockReachNetworking {
     
     /**
