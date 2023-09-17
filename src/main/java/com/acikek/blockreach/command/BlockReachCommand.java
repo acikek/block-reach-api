@@ -10,7 +10,6 @@ import net.minecraft.command.argument.DimensionArgumentType;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.command.argument.PosArgument;
 import net.minecraft.registry.RegistryKey;
-import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -90,12 +89,15 @@ public class BlockReachCommand {
     private static int open(CommandContext<ServerCommandSource> context, boolean useWorld) throws CommandSyntaxException {
         return run(context, useWorld, (targets, pos, world, worldKey) -> {
             World targetWorld = useWorld ? world : context.getSource().getWorld();
-            if (targetWorld.getBlockEntity(pos) instanceof NamedScreenHandlerFactory factory) {
-                for (var target : targets) {
-                    target.openHandledScreen(factory);
+            int successful = 0;
+            for (var target : targets) {
+                var screen = BlockReachAPI.getScreen(targetWorld, pos, target);
+                if (screen != null) {
+                    target.openHandledScreen(screen);
+                    successful++;
                 }
             }
-            return targets.size();
+            return successful;
         });
     }
 

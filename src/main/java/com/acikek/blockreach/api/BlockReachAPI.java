@@ -1,6 +1,7 @@
 package com.acikek.blockreach.api;
 
 import com.acikek.blockreach.BlockReachMod;
+import com.acikek.blockreach.api.tag.BlockReachTags;
 import com.acikek.blockreach.network.BlockReachNetworking;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import com.google.common.collect.HashMultimap;
@@ -8,10 +9,13 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Multimaps;
 import com.mojang.serialization.Codec;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.LockableContainerBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -319,5 +323,19 @@ public class BlockReachAPI {
      */
     public static void syncBlockEntities(ServerPlayerEntity player, BlockEntity blockEntity) {
         BlockReachAPI.syncBlockEntities(player, Collections.singleton(blockEntity));
+    }
+
+    public static @Nullable NamedScreenHandlerFactory getScreen(World world, BlockPos pos, PlayerEntity player) {
+        BlockEntity blockEntity = world.getBlockEntity(pos);
+        if (blockEntity == null) {
+            return world.getBlockState(pos).createScreenHandlerFactory(world, pos);
+        }
+        if (blockEntity instanceof LockableContainerBlockEntity lockable && !lockable.checkUnlocked(player)) {
+            return null;
+        }
+        if (blockEntity instanceof NamedScreenHandlerFactory factory) {
+            return factory;
+        }
+        return null;
     }
 }
