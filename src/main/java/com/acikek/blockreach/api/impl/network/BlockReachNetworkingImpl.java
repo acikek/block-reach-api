@@ -1,7 +1,8 @@
-package com.acikek.blockreach.network;
+package com.acikek.blockreach.api.impl.network;
 
 import com.acikek.blockreach.BlockReachMod;
 import com.acikek.blockreach.api.BlockReachAPI;
+import com.acikek.blockreach.api.position.BlockReachPositions;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -19,14 +20,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class BlockReachNetworking {
+public class BlockReachNetworkingImpl {
 
     public static final Identifier ALL = BlockReachMod.id("all");
     public static final Identifier DIFF = BlockReachMod.id("diff");
 
     private static void s2cSyncMap(ServerPlayerEntity player, Identifier channel, Map<BlockPos, List<RegistryKey<World>>> map) {
         var buf = PacketByteBufs.create();
-        buf.encodeAsJson(BlockReachAPI.POSITIONS_CODEC, map);
+        buf.encodeAsJson(BlockReachPositions.POSITIONS_CODEC, map);
         ServerPlayNetworking.send(player, channel, buf);
     }
 
@@ -44,14 +45,14 @@ public class BlockReachNetworking {
     @Environment(EnvType.CLIENT)
     public static void registerClient() {
         ClientPlayNetworking.registerGlobalReceiver(ALL, (client, handler, buf, responseSender) -> {
-            final var map = buf.decodeAsJson(BlockReachAPI.POSITIONS_CODEC);
+            final var map = buf.decodeAsJson(BlockReachPositions.POSITIONS_CODEC);
             client.execute(() -> {
-                var multimap = BlockReachAPI.createPositions(map);
+                var multimap = BlockReachPositions.createPositions(map);
                 ((BlockReachPlayer) client.player).blockreachapi$setReaching(multimap);
             });
         });
         ClientPlayNetworking.registerGlobalReceiver(DIFF, (client, handler, buf, responseSender) -> {
-            final var map = buf.decodeAsJson(BlockReachAPI.POSITIONS_CODEC);
+            final var map = buf.decodeAsJson(BlockReachPositions.POSITIONS_CODEC);
             client.execute(() -> {
                 var reaching = ((BlockReachPlayer) client.player).blockreachapi$reaching();
                 // Cannot call BlockReachAPI.createPositions here,

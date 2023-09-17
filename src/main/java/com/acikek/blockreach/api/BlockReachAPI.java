@@ -1,59 +1,32 @@
 package com.acikek.blockreach.api;
 
-import com.acikek.blockreach.BlockReachMod;
-import com.acikek.blockreach.api.tag.BlockReachTags;
-import com.acikek.blockreach.network.BlockReachNetworking;
+import com.acikek.blockreach.api.position.BlockReachPositions;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Multimaps;
-import com.mojang.serialization.Codec;
-import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.LockableContainerBlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class BlockReachAPI {
-
-    /**
-     * A world key that represents a reaching position not bound to any specific world.
-     * @see BlockReachAPI#getPositions(PlayerEntity)
-     * @see BlockReachAPI#getPositionView(PlayerEntity)
-     */
-    public static final RegistryKey<World> GLOBAL_WORLD = RegistryKey.of(RegistryKeys.WORLD, BlockReachMod.id("global"));
-
-    /**
-     * A codec for a reaching position map.
-     * @see BlockReachAPI#getPositionMap(Multimap)
-     * @see BlockReachAPI#createPositions(Map)
-     */
-    public static final Codec<Map<BlockPos, List<RegistryKey<World>>>> POSITIONS_CODEC = Codec.unboundedMap(
-            Codec.STRING.xmap(str -> BlockPos.fromLong(Long.parseLong(str)), pos -> Long.toString(pos.asLong())),
-            Codec.list(RegistryKey.createCodec(RegistryKeys.WORLD))
-    );
 
     /**
      * @return a <em>modifiable</em> map of the player's reaching positions.
      * May be {@code null} if the player has no reaching positions.
      * The present {@link RegistryKey<World>} collections should never be empty. Instead, positions
-     * not attached to a world should be treated as 'global' and must contain {@link BlockReachAPI#GLOBAL_WORLD}.
+     * not attached to a world should be treated as 'global' and must contain {@link BlockReachPositions#GLOBAL_WORLD}.
      * Global position values may be attached to other worlds, but to no effect.
      * @see Multimap#get(Object)
      */
@@ -62,35 +35,13 @@ public class BlockReachAPI {
     }
 
     /**
-     * Converts a position multimap to a {@link Map} better suited for serialization.
-     * @return the resulting map
-     */
-    public static @NotNull Map<BlockPos, List<RegistryKey<World>>> getPositionMap(@NotNull Multimap<BlockPos, RegistryKey<World>> multimap) {
-        return multimap.asMap().entrySet()
-                .stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, pair -> List.copyOf(pair.getValue())));
-    }
-
-    /**
-     * @see BlockReachAPI#getPositionMap(Multimap)
+     * @see BlockReachPositions#getPositionMap(Multimap)
      */
     public static @NotNull Map<BlockPos, List<RegistryKey<World>>> getPositionMap(PlayerEntity player) {
         var positions = BlockReachAPI.getPositions(player);
         return positions != null
-                ? BlockReachAPI.getPositionMap(positions)
+                ? BlockReachPositions.getPositionMap(positions)
                 : Collections.emptyMap();
-    }
-
-    /**
-     * Converts a position map to a {@link Multimap} for use in {@link BlockReachAPI}.
-     * @return the resulting multimap
-     */
-    public static @NotNull Multimap<BlockPos, RegistryKey<World>> createPositions(@NotNull Map<BlockPos, List<RegistryKey<World>>> map) {
-        Multimap<BlockPos, RegistryKey<World>> multimap = MultimapBuilder.treeKeys().hashSetValues(1).build();
-        for (var entry : map.entrySet()) {
-            multimap.putAll(entry.getKey(), entry.getValue());
-        }
-        return multimap;
     }
 
     /**
@@ -120,15 +71,15 @@ public class BlockReachAPI {
     }
 
     /**
-     * @return whether the player has the specified reaching position attached to the {@link BlockReachAPI#GLOBAL_WORLD}
+     * @return whether the player has the specified reaching position attached to the {@link BlockReachPositions#GLOBAL_WORLD}
      */
     public static boolean hasPositionGlobally(PlayerEntity player, BlockPos pos) {
         var positions = BlockReachAPI.getPositions(player);
-        return positions != null && positions.get(pos).contains(BlockReachAPI.GLOBAL_WORLD);
+        return positions != null && positions.get(pos).contains(BlockReachPositions.GLOBAL_WORLD);
     }
 
     /**
-     * @param strict whether {@link BlockReachAPI#GLOBAL_WORLD} is not sufficient for the world check
+     * @param strict whether {@link BlockReachPositions#GLOBAL_WORLD} is not sufficient for the world check
      * @return whether the player has the specified reaching position in the specified world
      */
     public static boolean hasPositionInWorld(PlayerEntity player, BlockPos pos, RegistryKey<World> worldKey, boolean strict) {
@@ -140,7 +91,7 @@ public class BlockReachAPI {
         if (worldKeys.isEmpty()) {
             return false; // Position not present in multimap
         }
-        return worldKeys.contains(worldKey) || (!strict && worldKeys.contains(GLOBAL_WORLD));
+        return worldKeys.contains(worldKey) || (!strict && worldKeys.contains(BlockReachPositions.GLOBAL_WORLD));
     }
 
     /**
@@ -202,7 +153,7 @@ public class BlockReachAPI {
      * @return whether the position was added successfully
      */
     public static boolean addPosition(PlayerEntity player, BlockPos pos) {
-        return BlockReachAPI.addPositionInWorld(player, pos, BlockReachAPI.GLOBAL_WORLD);
+        return BlockReachAPI.addPositionInWorld(player, pos, BlockReachPositions.GLOBAL_WORLD);
     }
 
     /**
@@ -257,11 +208,11 @@ public class BlockReachAPI {
     }
 
     /**
-     * Removes a reaching position from the {@link BlockReachAPI#GLOBAL_WORLD} in the player's map.
+     * Removes a reaching position from the {@link BlockReachPositions#GLOBAL_WORLD} in the player's map.
      * @see BlockReachAPI#removePositionFromWorld(PlayerEntity, BlockPos, RegistryKey)
      */
     public static boolean removePositionGlobally(PlayerEntity player, BlockPos pos) {
-        return BlockReachAPI.removePositionFromWorld(player, pos, BlockReachAPI.GLOBAL_WORLD);
+        return BlockReachAPI.removePositionFromWorld(player, pos, BlockReachPositions.GLOBAL_WORLD);
     }
 
     /**
@@ -270,59 +221,6 @@ public class BlockReachAPI {
      */
     public static Collection<RegistryKey<World>> removeBlockEntity(PlayerEntity player, BlockEntity blockEntity) {
         return BlockReachAPI.removePosition(player, blockEntity.getPos());
-    }
-
-    /**
-     * Syncs the player's entire position map to their client.
-     */
-    public static void sync(ServerPlayerEntity player) {
-        BlockReachNetworking.s2cSyncAll(player);
-    }
-
-    /**
-     * Syncs the specified positions in the player's position map to their client.
-     */
-    public static void syncPositions(ServerPlayerEntity player, Set<BlockPos> positions) {
-        BlockReachNetworking.s2cSyncDiff(player, positions);
-    }
-
-    /**
-     * @see BlockReachAPI#syncPositions(ServerPlayerEntity, Set)
-     */
-    public static void syncPositions(ServerPlayerEntity player, BlockPos... positions) {
-        BlockReachAPI.syncPositions(player, Arrays.stream(positions).collect(Collectors.toSet()));
-    }
-
-    /**
-     * @see BlockReachAPI#syncPositions(ServerPlayerEntity, Set)
-     */
-    public static void syncPosition(ServerPlayerEntity player, BlockPos pos) {
-        BlockReachAPI.syncPositions(player, Collections.singleton(pos));
-    }
-
-    /**
-     * Syncs the specified block entities' positions in the player's position map to their client.
-     * @see BlockReachAPI#syncPositions(ServerPlayerEntity, Set)
-     */
-    public static void syncBlockEntities(ServerPlayerEntity player, Set<BlockEntity> blockEntities) {
-        var positions = blockEntities.stream()
-                .map(BlockEntity::getPos)
-                .collect(Collectors.toSet());
-        BlockReachAPI.syncPositions(player, positions);
-    }
-
-    /**
-     * @see BlockReachAPI#syncBlockEntities(ServerPlayerEntity, Set)
-     */
-    public static void syncBlockEntities(ServerPlayerEntity player, BlockEntity... blockEntities) {
-        BlockReachAPI.syncBlockEntities(player, Arrays.stream(blockEntities).collect(Collectors.toSet()));
-    }
-
-    /**
-     * @see BlockReachAPI#syncBlockEntities(ServerPlayerEntity, Set)
-     */
-    public static void syncBlockEntities(ServerPlayerEntity player, BlockEntity blockEntity) {
-        BlockReachAPI.syncBlockEntities(player, Collections.singleton(blockEntity));
     }
 
     public static @Nullable NamedScreenHandlerFactory getScreen(World world, BlockPos pos, PlayerEntity player) {

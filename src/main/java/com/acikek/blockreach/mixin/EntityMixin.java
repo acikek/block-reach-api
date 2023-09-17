@@ -1,7 +1,7 @@
 package com.acikek.blockreach.mixin;
 
 import com.acikek.blockreach.BlockReachMod;
-import com.acikek.blockreach.api.BlockReachAPI;
+import com.acikek.blockreach.api.position.BlockReachPositions;
 import com.acikek.blockreach.util.BlockReachPlayer;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
@@ -105,8 +105,8 @@ public abstract class EntityMixin implements BlockReachPlayer {
         if (!blockreachapi$isReaching()) {
             return;
         }
-        var map = BlockReachAPI.getPositionMap(blockreachapi$reaching);
-        var element = BlockReachAPI.POSITIONS_CODEC.encodeStart(NbtOps.INSTANCE, map)
+        var map = BlockReachPositions.getPositionMap(blockreachapi$reaching);
+        var element = BlockReachPositions.POSITIONS_CODEC.encodeStart(NbtOps.INSTANCE, map)
                 .getOrThrow(true, BlockReachMod.LOGGER::error);
         nbt.put(NBT_KEY, element);
     }
@@ -116,9 +116,9 @@ public abstract class EntityMixin implements BlockReachPlayer {
         if (!nbt.contains(NBT_KEY)) {
             return;
         }
-        var map = BlockReachAPI.POSITIONS_CODEC.decode(NbtOps.INSTANCE, nbt.get(NBT_KEY))
+        var map = BlockReachPositions.POSITIONS_CODEC.decode(NbtOps.INSTANCE, nbt.get(NBT_KEY))
                 .getOrThrow(true, BlockReachMod.LOGGER::error)
                 .getFirst();
-        blockreachapi$reaching = BlockReachAPI.createPositions(map);
+        blockreachapi$reaching = BlockReachPositions.createPositions(map);
     }
 }

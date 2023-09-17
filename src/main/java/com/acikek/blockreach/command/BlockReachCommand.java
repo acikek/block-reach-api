@@ -1,6 +1,7 @@
 package com.acikek.blockreach.command;
 
 import com.acikek.blockreach.api.BlockReachAPI;
+import com.acikek.blockreach.api.network.BlockReachNetworking;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -60,7 +61,7 @@ public class BlockReachCommand {
                         BlockReachAPI.removePosition(player, pos);
                     }
                 }
-                BlockReachAPI.syncPosition(player, pos);
+                BlockReachNetworking.syncPosition(player, pos);
             }
             return targets.size();
         });
@@ -81,7 +82,7 @@ public class BlockReachCommand {
             if (positions != null) {
                 positions.clear();
             }
-            BlockReachAPI.sync(player);
+            BlockReachNetworking.sync(player);
         }
         return targets.size();
     }
