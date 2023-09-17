@@ -58,6 +58,8 @@ public abstract class EntityMixin implements BlockReachPlayer {
         blockreachapi$reaching = multimap;
     }
 
+    // TODO: With patches, re-evaluate these methods' use!
+
     /**
      * Compares a reaching position value with a coordinate value passed in by {@link Entity#squaredDistanceTo(double, double, double)}.
      * <p>
