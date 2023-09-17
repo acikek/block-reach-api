@@ -6,6 +6,8 @@
   "mixins": [
     "EntityMixin",
     "InventoryMixin"
+    "InventoryMixin",
+    "patch.ScreenHandlerMixin"
   ],
   "client": [
   ],
