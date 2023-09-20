@@ -5,14 +5,14 @@ import com.acikek.blockreach.util.BlockReachPlayer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.Identifier;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BlockReachMod implements ModInitializer {
 
     public static final String ID = "blockreachapi";
 
-    public static final Logger LOGGER = LogManager.getLogger("Block Reach API");
+    public static final Logger LOGGER = LoggerFactory.getLogger("Block Reach API");
 
     public static Identifier id(String path) {
         return new Identifier(ID, path);

@@ -5,8 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "mixins": [
     "EntityMixin",
-    "InventoryMixin"
     "InventoryMixin",
+    "debug.ServerPlayerEntityMixin",
     "patch.ScreenHandlerMixin"
   ],
   "client": [

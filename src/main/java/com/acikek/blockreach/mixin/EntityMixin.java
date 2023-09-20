@@ -9,7 +9,9 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,10 +32,17 @@ public abstract class EntityMixin implements BlockReachPlayer {
 
     @Shadow public abstract EntityPose getPose();
 
+    @Shadow private World world;
+
+    @Shadow public abstract Text getName();
+
     // Lazily-loaded to prevent instantiating collection for every entity
     // Never purposefully destroyed here, but doesn't get serialized when empty
     @Unique
     private Multimap<BlockPos, RegistryKey<World>> blockreachapi$reaching = null;
+
+    @Unique
+    private Byte blockreachapi$warnTicks = null;
 
     @Override
     public boolean blockreachapi$isReaching() {
@@ -58,8 +67,6 @@ public abstract class EntityMixin implements BlockReachPlayer {
         blockreachapi$reaching = multimap;
     }
 
-    // TODO: With patches, re-evaluate these methods' use!
-
     /**
      * Compares a reaching position value with a coordinate value passed in by {@link Entity#squaredDistanceTo(double, double, double)}.
      * <p>
@@ -81,6 +88,15 @@ public abstract class EntityMixin implements BlockReachPlayer {
                 : blockPosValue == (int) (Math.floor(providedValue));
     }
 
+    @Unique
+    private void blockreachapi$warn(BlockPos pos) {
+        if (blockreachapi$warnTicks != null) {
+            return;
+        }
+        var blockId = Registries.BLOCK.getId(world.getBlockState(pos).getBlock());
+        BlockReachMod.LOGGER.debug("Block '{}' ({}) called squaredDistanceTo directly for player {}!", blockId, pos.toShortString(), getName());
+    }
+
     // Screen handlers call this method in some way, just not consistently.
     // Automatic validation - if this call doesn't go through on the server, no slot/GUI actions will be submitted
     @Inject(method = "squaredDistanceTo(DDD)D", cancellable = true, at = @At("HEAD"))
@@ -96,6 +112,19 @@ public abstract class EntityMixin implements BlockReachPlayer {
                     && blockreachapi$compare(pos.getY(), y, eyeOffset)
                     && blockreachapi$compare(pos.getZ(), z, 0.0)) {
                 cir.setReturnValue(0.0);
+                blockreachapi$warn(pos);
+                blockreachapi$warnTicks = 2;
+                return;
+            }
+        }
+    }
+
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void blockreachapi$warnTick(CallbackInfo ci) {
+        if (blockreachapi$warnTicks != null) {
+            blockreachapi$warnTicks--;
+            if (blockreachapi$warnTicks == 0) {
+                blockreachapi$warnTicks = null;
             }
         }
     }
