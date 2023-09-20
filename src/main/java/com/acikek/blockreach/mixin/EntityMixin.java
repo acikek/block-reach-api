@@ -41,9 +41,6 @@ public abstract class EntityMixin implements BlockReachPlayer {
     @Unique
     private Multimap<BlockPos, RegistryKey<World>> blockreachapi$reaching = null;
 
-    @Unique
-    private Byte blockreachapi$warnTicks = null;
-
     @Override
     public boolean blockreachapi$isReaching() {
         return blockreachapi$reaching != null && !blockreachapi$reaching.isEmpty();
@@ -90,9 +87,6 @@ public abstract class EntityMixin implements BlockReachPlayer {
 
     @Unique
     private void blockreachapi$warn(BlockPos pos) {
-        if (blockreachapi$warnTicks != null) {
-            return;
-        }
         var blockId = Registries.BLOCK.getId(world.getBlockState(pos).getBlock());
         BlockReachMod.LOGGER.debug("Block '{}' ({}) called squaredDistanceTo directly for player {}!", blockId, pos.toShortString(), getName());
     }
@@ -113,18 +107,7 @@ public abstract class EntityMixin implements BlockReachPlayer {
                     && blockreachapi$compare(pos.getZ(), z, 0.0)) {
                 cir.setReturnValue(0.0);
                 blockreachapi$warn(pos);
-                blockreachapi$warnTicks = 2;
                 return;
-            }
-        }
-    }
-
-    @Inject(method = "tick", at = @At("TAIL"))
-    private void blockreachapi$warnTick(CallbackInfo ci) {
-        if (blockreachapi$warnTicks != null) {
-            blockreachapi$warnTicks--;
-            if (blockreachapi$warnTicks == 0) {
-                blockreachapi$warnTicks = null;
             }
         }
     }
