@@ -226,10 +226,10 @@ public class BlockReachAPI {
 
     /**
      * Utility method for finding and validating a position's screen, if any.
-     * Respects {@link BlockReachTags#DENY_BLOCKS}.
-     * @return the screen handler factory, or {@code null} if none is found or validated.
+     * @param strictDenied whether to respect {@link BlockReachTags#DENY_BLOCKS}
+     * @return the screen handler factory, or {@code null} if none is found or validated
      */
-    public static @Nullable NamedScreenHandlerFactory getScreen(World world, BlockPos pos, PlayerEntity player) {
+    public static @Nullable NamedScreenHandlerFactory getScreen(World world, BlockPos pos, PlayerEntity player, boolean strictDenied) {
         BlockEntity blockEntity = world.getBlockEntity(pos);
         if (blockEntity instanceof LockableContainerBlockEntity lockable && !lockable.checkUnlocked(player)) {
             return null;
@@ -238,9 +238,16 @@ public class BlockReachAPI {
             return factory;
         }
         var state = world.getBlockState(pos);
-        if (state.isIn(BlockReachTags.DENY_BLOCKS)) {
+        if (strictDenied && state.isIn(BlockReachTags.DENY_BLOCKS)) {
             return null;
         }
         return world.getBlockState(pos).createScreenHandlerFactory(world, pos);
+    }
+
+    /**
+     * @see BlockReachAPI#getScreen(World, BlockPos, PlayerEntity, boolean)
+     */
+    public static @Nullable NamedScreenHandlerFactory getScreen(World world, BlockPos pos, PlayerEntity player) {
+        return BlockReachAPI.getScreen(world, pos, player, true);
     }
 }
